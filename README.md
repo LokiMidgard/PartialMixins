@@ -5,7 +5,7 @@ of the anotated type. This give you intellisense support on your classes.
 
 ## Usage
 
-First add the NuGet package to your Project.
+First add the NuGet [package](https://www.nuget.org/packages/PartialMixin/) to your Project.
 
 **Currently there is a Bug preventing the generated source file to be added to the project.**
 
