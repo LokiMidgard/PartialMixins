@@ -13,7 +13,7 @@ _Workaround: Manually add the ```Mixin.g.cs``` in the Properties folder to to yo
 
 To create a Mixin just declare a class.
 
-```
+```c#
     class IdMixin
     {
         public Guid Id { get; set; } = Guid.NewGuid();
@@ -24,7 +24,7 @@ To apply the mixin you need to declare the MixinAttribute on the class that shou
 mixin. This class must also have the ```partial``` modifyer. Pass the Type of the Mixin in the attribute
 constructor. After the next time you build your source the mixin is implemented by your class. 
 
-```
+```c#
     [Mixin(typeof(IdMixin))]
     partial class BusinessObject
     {
@@ -44,7 +44,7 @@ constructor. After the next time you build your source the mixin is implemented 
 
 Your mixins can also implement interfaces. 
 
-```
+```c#
     interface Id : IEquatable<Id>
     {
         Guid Id { get; }
