@@ -78,6 +78,7 @@ _Con_
 ##Roadmap
 * Better compiletime error reporting
 * Generated source file shuold automaticly added to the Project 
+* Automated NuGet build _(ci)_
 
 ## Used Assets
 Icon *Combine* created by [Paul Philippe Berthelon Bravo](https://thenounproject.com/paulberthelon) published under Public Domain.
