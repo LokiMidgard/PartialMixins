@@ -3,15 +3,13 @@
   <PropertyGroup>
     <MixinPath Condition="$(MixinPath) == '' Or $(MixinPath) == '*Undefined*'">$(MSBuildThisFileDirectory)</MixinPath>
   </PropertyGroup>
-  <UsingTask
-      TaskName="PartialMixin"
-      AssemblyFile="$(MixinPath)..\tools\PartialMixins.exe" />
+  <UsingTask  TaskName="PartialMixin"
+              AssemblyFile="$(MixinPath)..\tools\PartialMixins.exe" />
 
- <Target Name="BeforeBuild">
-<Message Text="$(MixinPath)..\tools\PartialMixins.exe" Importance="high"/>
-<Message Text="$(ProjectDir)Properties\Mixin.g.cs" Importance="high"/>
-
-    <PartialMixin GeneratedFilePath="$(ProjectDir)Properties\Mixin.g.cs" ProjectPath="$(ProjectPath)"/>
+  <Target Name="BeforeBuild">
+    <Message Text="Generating Code..." Importance="high"/>
+    <PartialMixin GeneratedFilePath="$(ProjectDir)Properties\Mixin.g.cs"
+                  ProjectPath="$(ProjectPath)"/>
   </Target>
 
 </Project>
