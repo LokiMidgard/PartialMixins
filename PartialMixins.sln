@@ -7,6 +7,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PartialMixins", "PartialMix
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mixin", "Mixin\Mixin.csproj", "{8B48A374-4FF0-4C98-953B-9142426E4AC2}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assets", "Assets", "{C022DF97-88DA-43CE-9647-CDF85560A2C3}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\..\..\Downloads\noun_48259.png = ..\..\..\..\Downloads\noun_48259.png
+		..\..\..\..\Downloads\noun_48259.svg = ..\..\..\..\Downloads\noun_48259.svg
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
