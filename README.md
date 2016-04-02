@@ -80,5 +80,8 @@ _Con_
 * Generated source file shuold automaticly added to the Project 
 * Automated NuGet build _(ci)_
 
-## Used Assets
+##Legal 
+This Software is licensed under [MIT](https://tldrlegal.com/license/mit-license#summary).
+
+### Used Assets
 Icon *Combine* created by [Paul Philippe Berthelon Bravo](https://thenounproject.com/paulberthelon) published under Public Domain.
