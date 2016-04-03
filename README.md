@@ -80,6 +80,7 @@ _Con_
 - [ ] Better compiletime error reporting
 - [ ] Generated source file shuold automaticly added to the Project 
 - [ ] Automated NuGet build _(ci)_
+- [ ] Allow mixins of mixins. _(As long it is no circal dependency)_
 - [x] Support for Generic Mixins
 - [x] Better using conflict resolve strategy
 - [x] Add ```GenerteadCodeAttribute``` to Methods and Propertys
