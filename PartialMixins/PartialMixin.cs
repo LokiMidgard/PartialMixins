@@ -29,7 +29,7 @@ namespace PartialMixins
             System.IO.File.WriteAllText(newFilePath, codeToGenerate);
         }
 
-        
+
         public String GeneratedFilePath { get; set; }
         public String ProjectPath { get; set; }
 
@@ -55,9 +55,8 @@ namespace PartialMixins
             var mixinAttribute = compilation.GetTypeByMetadataName($"{nameof(Mixin)}.{nameof(Mixin.MixinAttribute)}");
             if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
                 throw new Exception("Attribut loded from wrong Assembly");
-            var typesToExtend = compilation.GlobalNamespace.GetNamespaceMembers()
-                .SelectMany(x => x.GetMembers())
-                .OfType<ITypeSymbol>()
+            var namespaces = compilation.GlobalNamespace.GetNamespaceMembers();
+            var typesToExtend = GetTypes(namespaces)
                 .Where(x => x.IsReferenceType)
                 .Where(x => x.GetAttributes().Any(checkedAttribute => checkedAttribute.AttributeClass == mixinAttribute))
                 .ToArray();
@@ -83,7 +82,7 @@ namespace PartialMixins
                             .WithMembers(implementaionSyntaxNode.Members)
                             .WithModifiers(implementaionSyntaxNode.Modifiers)
                             .AddModifiers(SyntaxFactory.ParseToken("partial"));
-                        var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(originalType.ContainingNamespace.MetadataName))
+                        var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                             .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
                         newClasses.Add(newNamespaceDeclaration);
 
@@ -99,7 +98,7 @@ namespace PartialMixins
             }
 
             var newClassesCode = Formatter.Format(SyntaxFactory.CompilationUnit()
-                .WithUsings(SyntaxFactory.List(newUsings))
+                .WithUsings(SyntaxFactory.List(newUsings.Distinct()))
                 .WithMembers(SyntaxFactory.List(newClasses)), workspace).ToFullString();
 
 
@@ -108,6 +107,24 @@ namespace PartialMixins
 
         }
 
+        private static string GetNsName(INamespaceSymbol ns)
+        {
+            if (ns.ContainingNamespace != null && !string.IsNullOrWhiteSpace(ns.ContainingNamespace.Name))
+                return $"{GetNsName(ns.ContainingNamespace)}.{ns.Name}";
+            return ns.Name;
+        }
+
+        private static IEnumerable<ITypeSymbol> GetTypes(IEnumerable<INamespaceSymbol> namespaces)
+        {
+            var childNamespaces = namespaces
+                            .SelectMany(x => x.GetMembers())
+                            .OfType<INamespaceSymbol>();
+            var types = namespaces.SelectMany(x => x.GetMembers())
+                            .OfType<ITypeSymbol>();
+            if (childNamespaces.Any())
+                types = types.Concat(GetTypes(childNamespaces));
+            return types;
+        }
 
     }
 }
