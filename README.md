@@ -80,7 +80,7 @@ _Con_
 - [ ] Better compiletime error reporting
 - [ ] Generated source file shuold automaticly added to the Project 
 - [ ] Automated NuGet build _(ci)_
-- [v] Support for Generic Mixins
+- [x] Support for Generic Mixins
 - [ ] Better using conflict resolve strategy
 
 ##Legal 
