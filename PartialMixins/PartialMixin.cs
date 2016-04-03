@@ -62,7 +62,6 @@ namespace PartialMixins
                 .ToArray();
 
             var newClasses = new List<MemberDeclarationSyntax>();
-            var newUsings = new List<UsingDirectiveSyntax>();
 
             var generator = SyntaxGenerator.GetGenerator(project);
 
@@ -83,11 +82,8 @@ namespace PartialMixins
 
                     foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<ClassDeclarationSyntax>())
                     {
-
                         var typeParameterImplementer = new TypeParameterImplementer(compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree), typeParameterMapping);
                         var changedImplementaionSyntaxNode = (ClassDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
-
-
 
                         var newClass = SyntaxFactory.ClassDeclaration(originalType.Name)
                             .WithMembers(changedImplementaionSyntaxNode.Members)
@@ -98,8 +94,7 @@ namespace PartialMixins
                         newClasses.Add(newNamespaceDeclaration);
 
 
-                        var usings = (originalImplementaionSyntaxNode.SyntaxTree.GetRoot() as CompilationUnitSyntax).Usings;
-                        newUsings.AddRange(usings);
+
 
                         var syntaxString = changedImplementaionSyntaxNode.ToFullString();
 
@@ -109,7 +104,6 @@ namespace PartialMixins
             }
 
             var newClassesCode = Formatter.Format(SyntaxFactory.CompilationUnit()
-                .WithUsings(SyntaxFactory.List(newUsings.Distinct()))
                 .WithMembers(SyntaxFactory.List(newClasses)), workspace).ToFullString();
 
 
@@ -138,31 +132,39 @@ namespace PartialMixins
                 var valueText = node.Identifier.ValueText;
                 var text = node.Identifier.Text;
                 var info = semanticModel.GetSymbolInfo(node);
-                if (/*info.Symbol?.Kind == SymbolKind.TypeParameter */ info.Symbol is ITypeParameterSymbol)
+                if (info.Symbol is ITypeParameterSymbol)
                 {
                     var tSymbol = info.Symbol as ITypeParameterSymbol;
                     if (typeParameterMapping.ContainsKey(tSymbol))
                     {
-                        var typeParameterSyntax = SyntaxFactory.IdentifierName(GetFullQualifiedName(typeParameterMapping[tSymbol]));
+                        var typeParameterSyntax = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName(typeParameterMapping[tSymbol])}");
                         return typeParameterSyntax;
                     }
                 }
-                return base.VisitIdentifierName(node);
+                else if (info.Symbol != null
+                    && !node.IsVar
+                    && (info.Symbol.Kind == SymbolKind.ArrayType
+                        || info.Symbol.Kind == SymbolKind.NamedType))
+                    node = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName(info.Symbol)}");
+                return node;
             }
 
-            private string GetFullQualifiedName(ITypeSymbol typeSymbol)
+            private static string GetFullQualifiedName(ISymbol typeSymbol)
             {
                 var ns = GetNsName(typeSymbol.ContainingNamespace);
                 if (!String.IsNullOrWhiteSpace(ns))
                     return $"{ns}.{typeSymbol.MetadataName}";
                 return typeSymbol.MetadataName;
             }
+
         }
 
- 
+
 
         private static string GetNsName(INamespaceSymbol ns)
         {
+            if (ns == null)
+                return null;
             if (ns.ContainingNamespace != null && !string.IsNullOrWhiteSpace(ns.ContainingNamespace.Name))
                 return $"{GetNsName(ns.ContainingNamespace)}.{ns.Name}";
             return ns.Name;
@@ -182,3 +184,5 @@ namespace PartialMixins
 
     }
 }
+
+
