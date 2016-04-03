@@ -142,6 +142,11 @@ namespace PartialMixins
                     && (info.Symbol.Kind == SymbolKind.ArrayType
                         || info.Symbol.Kind == SymbolKind.NamedType))
                     node = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName(info.Symbol)}");
+                else if (info.Symbol != null
+                    && !node.IsVar
+                    && ((info.Symbol.Kind == SymbolKind.Method
+                        && (info.Symbol as IMethodSymbol).MethodKind == MethodKind.Constructor)))
+                    node = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName((info.Symbol as IMethodSymbol).ReceiverType)}");
                 return node;
             }
 
@@ -155,7 +160,7 @@ namespace PartialMixins
             }
 
         }
-
+        
         class MethodAttributor : CSharpSyntaxRewriter
         {
             private readonly AttributeListSyntax[] generatedAttribute;
