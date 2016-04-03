@@ -26,6 +26,7 @@ namespace PartialMixins
             var projectPath = args[0];
             var newFilePath = args[1];
 
+            System.IO.File.WriteAllText(newFilePath, "");
             var codeToGenerate = GenerateSource(projectPath).Result;
             System.IO.File.WriteAllText(newFilePath, codeToGenerate);
         }
@@ -40,6 +41,7 @@ namespace PartialMixins
             if (String.IsNullOrWhiteSpace(projectPath))
                 projectPath = this.BuildEngine4.ProjectFileOfTaskNode;
 
+            System.IO.File.WriteAllText(GeneratedFilePath, "");
             var codeToGenerate = GenerateSource(projectPath).Result;
             System.IO.File.WriteAllText(GeneratedFilePath, codeToGenerate);
             return true;
@@ -57,14 +59,22 @@ namespace PartialMixins
             if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
                 throw new Exception("Attribut loded from wrong Assembly");
             var namespaces = compilation.GlobalNamespace.GetNamespaceMembers();
-            var typesToExtend = GetTypes(namespaces)
+            IEnumerable<ITypeSymbol> typesToExtend = GetTypes(namespaces)
                 .Where(x => x.IsReferenceType)
-                .Where(x => x.GetAttributes().Any(checkedAttribute => checkedAttribute.AttributeClass == mixinAttribute))
-                .ToArray();
+                .Where(x => x.GetAttributes().Any(checkedAttribute => checkedAttribute.AttributeClass == mixinAttribute));
+            typesToExtend = new HashSet<ITypeSymbol>(typesToExtend);
+            typesToExtend = typesToExtend.OrderTopological(elementThatDependsOnOther =>
+             {
+
+                 var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(y => y.AttributeClass == mixinAttribute);
+                 var implementationSymbol = toImplenmt
+                 .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
+                 .Where(x => typesToExtend.Contains(x)).ToArray();
+                 return implementationSymbol;
+             });
+
 
             var newClasses = new List<MemberDeclarationSyntax>();
-
-            var generator = SyntaxGenerator.GetGenerator(project);
 
 
             foreach (var originalType in typesToExtend)
@@ -74,16 +84,20 @@ namespace PartialMixins
                 {
 
                     var implementationSymbol = (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol);
-
+                    var updatetedImplementationSymbol = compilation.GetTypeByMetadataName(GetFullQualifiedName(implementationSymbol));
                     // Get Generic Typeparameter
+
 
                     var typeParameterMapping = implementationSymbol.TypeParameters
                                             .Zip(implementationSymbol.TypeArguments, (parameter, argumet) => new { parameter, argumet })
-                                        .ToDictionary(x => x.parameter, x => x.argumet);
+                                        .ToDictionary(x => x.parameter, x => x.argumet, new TypeParameterComparer());
+
+                    implementationSymbol = updatetedImplementationSymbol; // Wait until we saved the TypeParameters.
 
                     foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<ClassDeclarationSyntax>())
                     {
-                        var typeParameterImplementer = new TypeParameterImplementer(compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree), typeParameterMapping);
+                        var semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
+                        var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping);
                         var changedImplementaionSyntaxNode = (ClassDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
 
                         var AttributeGenerator = new MethodAttributor();
@@ -92,10 +106,16 @@ namespace PartialMixins
 
                         var newClass = SyntaxFactory.ClassDeclaration(originalType.Name)
                             .WithMembers(changedImplementaionSyntaxNode.Members)
-                            .WithModifiers(changedImplementaionSyntaxNode.Modifiers)
-                            .AddModifiers(SyntaxFactory.ParseToken("partial"));
+                            .WithModifiers(changedImplementaionSyntaxNode.Modifiers);
+                        if ((originalType as INamedTypeSymbol).TypeParameters.Any())
+                            newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType as INamedTypeSymbol));
+
+                        if (!newClass.Modifiers.Any(x => x.Text == "partial"))
+                            newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("partial"));
+
                         var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                             .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
+                        compilation = compilation.AddSyntaxTrees(SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration })).SyntaxTree);
                         newClasses.Add(newNamespaceDeclaration);
                     }
                 }
@@ -111,64 +131,42 @@ namespace PartialMixins
 
         }
 
-        class TypeParameterImplementer : CSharpSyntaxRewriter
+        private static TypeParameterListSyntax GetTypeParameters(INamedTypeSymbol originalType)
         {
-            private SemanticModel semanticModel;
-            private Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping;
+            //(originalType as INamedTypeSymbol).TypeParameters;
 
+            var typeParametrs = originalType.TypeParameters.Select(x =>
+              {
+                  return SyntaxFactory.TypeParameter(x.Name);
+              });
 
-
-            public TypeParameterImplementer(SemanticModel semanticModel, Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping)
-            {
-                this.typeParameterMapping = typeParameterMapping;
-                this.semanticModel = semanticModel;
-
-            }
-
-            public override SyntaxNode VisitIdentifierName(IdentifierNameSyntax node)
-            {
-                var info = semanticModel.GetSymbolInfo(node);
-                if (info.Symbol is ITypeParameterSymbol)
-                {
-                    var tSymbol = info.Symbol as ITypeParameterSymbol;
-                    if (typeParameterMapping.ContainsKey(tSymbol))
-                    {
-                        var typeParameterSyntax = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName(typeParameterMapping[tSymbol])}");
-                        return typeParameterSyntax;
-                    }
-                }
-                else if (info.Symbol != null
-                    && !node.IsVar
-                    && (info.Symbol.Kind == SymbolKind.ArrayType
-                        || info.Symbol.Kind == SymbolKind.NamedType))
-                    node = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName(info.Symbol)}");
-                else if (info.Symbol != null
-                    && !node.IsVar
-                    && ((info.Symbol.Kind == SymbolKind.Method
-                        && (info.Symbol as IMethodSymbol).MethodKind == MethodKind.Constructor)))
-                    node = SyntaxFactory.IdentifierName($"global::{GetFullQualifiedName((info.Symbol as IMethodSymbol).ReceiverType)}");
-                return node;
-            }
-
-
-            private static string GetFullQualifiedName(ISymbol typeSymbol)
-            {
-                var ns = GetNsName(typeSymbol.ContainingNamespace);
-                if (!String.IsNullOrWhiteSpace(ns))
-                    return $"{ns}.{typeSymbol.MetadataName}";
-                return typeSymbol.MetadataName;
-            }
+            return SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(typeParametrs));
 
         }
-        
+
+
+
+
+
+
+        private static string GetFullQualifiedName(ISymbol typeSymbol)
+        {
+            var ns = GetNsName(typeSymbol.ContainingNamespace);
+            if (!String.IsNullOrWhiteSpace(ns))
+                return $"{ns}.{typeSymbol.MetadataName}";
+            return typeSymbol.MetadataName;
+        }
+
+
         class MethodAttributor : CSharpSyntaxRewriter
         {
+            private const string GENERATOR_ATTRIBUTE_NAME = "global::System.CodeDom.Compiler.GeneratedCodeAttribute";
             private readonly AttributeListSyntax[] generatedAttribute;
             public MethodAttributor()
             {
                 generatedAttribute = new AttributeListSyntax[] { SyntaxFactory.AttributeList(
                             SyntaxFactory.SeparatedList(new AttributeSyntax[] {
-                            SyntaxFactory.Attribute(SyntaxFactory.ParseName( "global::System.CodeDom.Compiler.GeneratedCodeAttribute"),
+                            SyntaxFactory.Attribute(SyntaxFactory.ParseName( GENERATOR_ATTRIBUTE_NAME),
                                 SyntaxFactory.AttributeArgumentList(
                                     SyntaxFactory.SeparatedList(new AttributeArgumentSyntax[] {
                                         SyntaxFactory.AttributeArgument(SyntaxFactory.LiteralExpression( SyntaxKind.StringLiteralExpression, SyntaxFactory.ParseToken("\"Mixin Task\""))),
@@ -178,10 +176,19 @@ namespace PartialMixins
                         }))};
             }
 
-            public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node) => node.AddAttributeLists(generatedAttribute);
+            public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
+            {
+                if (!node.AttributeLists.Any(x => x.Attributes.Any(y => y.Name.ToFullString() == GENERATOR_ATTRIBUTE_NAME)))
+                    return node.AddAttributeLists(generatedAttribute);
+                return node;
+            }
 
-            public override SyntaxNode VisitPropertyDeclaration(PropertyDeclarationSyntax node) => node.AddAttributeLists(generatedAttribute);
-
+            public override SyntaxNode VisitPropertyDeclaration(PropertyDeclarationSyntax node)
+            {
+                if (!node.AttributeLists.Any(x => x.Attributes.Any(y => y.Name.ToFullString() == GENERATOR_ATTRIBUTE_NAME)))
+                    return node.AddAttributeLists(generatedAttribute);
+                return node;
+            }
         }
 
 
