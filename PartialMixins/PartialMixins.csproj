@@ -97,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Enumerable.cs" />
+    <Compile Include="MethodAttributor.cs" />
     <Compile Include="PartialMixin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TypeParameterComparer.cs" />
