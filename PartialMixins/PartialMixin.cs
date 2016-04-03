@@ -73,24 +73,35 @@ namespace PartialMixins
                 foreach (var currentMixinAttribute in toImplenmt)
                 {
 
-                    var nameOfImplementaion = currentMixinAttribute.ConstructorArguments.First().Value.ToString();
+                    var implementationSymbol = (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol);
 
-                    var implementationSymbol = compilation.GetTypeByMetadataName(nameOfImplementaion);
-                    foreach (var implementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<ClassDeclarationSyntax>())
+                    // Get Generic Typeparameter
+
+                    var typeParameterMapping = implementationSymbol.TypeParameters
+                                            .Zip(implementationSymbol.TypeArguments, (parameter, argumet) => new { parameter, argumet })
+                                        .ToDictionary(x => x.parameter, x => x.argumet);
+
+                    foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<ClassDeclarationSyntax>())
                     {
+
+                        var typeParameterImplementer = new TypeParameterImplementer(compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree), typeParameterMapping);
+                        var changedImplementaionSyntaxNode = (ClassDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
+
+
+
                         var newClass = SyntaxFactory.ClassDeclaration(originalType.Name)
-                            .WithMembers(implementaionSyntaxNode.Members)
-                            .WithModifiers(implementaionSyntaxNode.Modifiers)
+                            .WithMembers(changedImplementaionSyntaxNode.Members)
+                            .WithModifiers(changedImplementaionSyntaxNode.Modifiers)
                             .AddModifiers(SyntaxFactory.ParseToken("partial"));
                         var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                             .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
                         newClasses.Add(newNamespaceDeclaration);
 
 
-                        var usings = (implementaionSyntaxNode.SyntaxTree.GetRoot() as CompilationUnitSyntax).Usings;
+                        var usings = (originalImplementaionSyntaxNode.SyntaxTree.GetRoot() as CompilationUnitSyntax).Usings;
                         newUsings.AddRange(usings);
 
-                        var syntaxString = implementaionSyntaxNode.ToFullString();
+                        var syntaxString = changedImplementaionSyntaxNode.ToFullString();
 
                     }
                 }
@@ -106,6 +117,49 @@ namespace PartialMixins
 
 
         }
+
+        class TypeParameterImplementer : CSharpSyntaxRewriter
+        {
+            private SemanticModel semanticModel;
+            private Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping;
+
+
+
+            public TypeParameterImplementer(SemanticModel semanticModel, Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping)
+            {
+                this.typeParameterMapping = typeParameterMapping;
+                this.semanticModel = semanticModel;
+
+            }
+
+            public override SyntaxNode VisitIdentifierName(IdentifierNameSyntax node)
+            {
+                var value = node.Identifier.Value;
+                var valueText = node.Identifier.ValueText;
+                var text = node.Identifier.Text;
+                var info = semanticModel.GetSymbolInfo(node);
+                if (/*info.Symbol?.Kind == SymbolKind.TypeParameter */ info.Symbol is ITypeParameterSymbol)
+                {
+                    var tSymbol = info.Symbol as ITypeParameterSymbol;
+                    if (typeParameterMapping.ContainsKey(tSymbol))
+                    {
+                        var typeParameterSyntax = SyntaxFactory.IdentifierName(GetFullQualifiedName(typeParameterMapping[tSymbol]));
+                        return typeParameterSyntax;
+                    }
+                }
+                return base.VisitIdentifierName(node);
+            }
+
+            private string GetFullQualifiedName(ITypeSymbol typeSymbol)
+            {
+                var ns = GetNsName(typeSymbol.ContainingNamespace);
+                if (!String.IsNullOrWhiteSpace(ns))
+                    return $"{ns}.{typeSymbol.MetadataName}";
+                return typeSymbol.MetadataName;
+            }
+        }
+
+ 
 
         private static string GetNsName(INamespaceSymbol ns)
         {
