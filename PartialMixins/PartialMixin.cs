@@ -92,12 +92,6 @@ namespace PartialMixins
                         var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                             .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
                         newClasses.Add(newNamespaceDeclaration);
-
-
-
-
-                        var syntaxString = changedImplementaionSyntaxNode.ToFullString();
-
                     }
                 }
 
@@ -128,9 +122,6 @@ namespace PartialMixins
 
             public override SyntaxNode VisitIdentifierName(IdentifierNameSyntax node)
             {
-                var value = node.Identifier.Value;
-                var valueText = node.Identifier.ValueText;
-                var text = node.Identifier.Text;
                 var info = semanticModel.GetSymbolInfo(node);
                 if (info.Symbol is ITypeParameterSymbol)
                 {
