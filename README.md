@@ -77,9 +77,11 @@ _Con_
 * problems with refactoring. (if not using interfaces) 
 
 ##Roadmap
-* Better compiletime error reporting
-* Generated source file shuold automaticly added to the Project 
-* Automated NuGet build _(ci)_
+- [ ] Better compiletime error reporting
+- [ ] Generated source file shuold automaticly added to the Project 
+- [ ] Automated NuGet build _(ci)_
+- [ ] Support for Generic Mixins
+- [ ] Better using conflict resolve strategy
 
 ##Legal 
 This Software is licensed under [MIT](https://tldrlegal.com/license/mit-license#summary).
