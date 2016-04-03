@@ -1,4 +1,6 @@
 [![NuGet](https://img.shields.io/nuget/v/PartialMixin.svg?style=flat-square)](https://www.nuget.org/packages/PartialMixin/)
+[![GitHub license](https://img.shields.io/github/license/LokiMidgard/PartialMixins.svg?style=flat-squar)](https://tldrlegal.com/license/mit-license#summary)
+
 
 # PartialMixins
 Extends C# with Mixins. The Mixins are simulated using partial classes, instead of ilweaving like other
