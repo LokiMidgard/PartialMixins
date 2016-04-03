@@ -1,3 +1,5 @@
+[![NuGet](https://img.shields.io/nuget/v/PartialMixin.svg?style=flat-square)](https://www.nuget.org/packages/PartialMixin/)
+
 # PartialMixins
 Extends C# with Mixins. The Mixins are simulated using partial classes, instead of ilweaving like other
 librarys. The MixinAttribute copys all members of the targeted Mixin to a partial class implementation
