@@ -82,6 +82,7 @@ _Con_
 - [ ] Automated NuGet build _(ci)_
 - [x] Support for Generic Mixins
 - [x] Better using conflict resolve strategy
+- [x] Add ```GenerteadCodeAttribute``` to Methods and Propertys
 
 ##Legal 
 This Software is licensed under [MIT](https://tldrlegal.com/license/mit-license#summary).
