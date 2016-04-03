@@ -64,6 +64,7 @@ Your mixins can also implement interfaces.
 + Mixins may not have methods with the same method signiture then any other mixin that is
 implemented by the same class, or any method of the implementing class itself. _(unless explicitly
 implemented methods of interfaces)_  
+* Mixins should not inhire from anything other than ```Object```
 
 ## Pros & Cons
 
