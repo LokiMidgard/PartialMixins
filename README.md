@@ -1,4 +1,5 @@
 [![NuGet](https://img.shields.io/nuget/v/PartialMixin.svg?style=flat-square)](https://www.nuget.org/packages/PartialMixin/)
+[![Build status](https://ci.appveyor.com/api/projects/status/u5b72juufb2gxve3?svg=true)](https://ci.appveyor.com/project/LokiMidgard/partialmixins)
 [![GitHub license](https://img.shields.io/github/license/LokiMidgard/PartialMixins.svg?style=flat-squar)](https://tldrlegal.com/license/mit-license#summary)
 
 
