@@ -99,13 +99,45 @@ namespace PartialMixins
 
 
                         var newClass = SyntaxFactory.ClassDeclaration(originalType.Name)
-                            .WithMembers(changedImplementaionSyntaxNode.Members)
-                            .WithModifiers(changedImplementaionSyntaxNode.Modifiers);
-                        if ((originalType as INamedTypeSymbol).TypeParameters.Any())
+                            .WithMembers(changedImplementaionSyntaxNode.Members);
+                        if ((originalType as INamedTypeSymbol)?.TypeParameters.Any() ?? false)
                             newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType as INamedTypeSymbol));
+
+
+                        switch (originalType.DeclaredAccessibility)
+                        {
+                            case Accessibility.NotApplicable:
+                                break;
+                            case Accessibility.Private:
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("private"));
+                                break;
+                            case Accessibility.ProtectedAndInternal:
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("protected"));
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("internal"));
+                                break;
+                            case Accessibility.Protected:
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("protected"));
+                                break;
+                            case Accessibility.Internal:
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("internal"));
+                                break;
+                            case Accessibility.ProtectedOrInternal:
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("protected"));
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("internal"));
+                                break;
+                            case Accessibility.Public:
+                                newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("public"));
+                                break;
+                            default:
+                                break;
+                        }
+
+                        if (originalType.IsStatic)
+                            newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("static"));
 
                         if (!newClass.Modifiers.Any(x => x.Text == "partial"))
                             newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("partial"));
+
 
                         var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                             .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
