@@ -161,6 +161,11 @@ namespace PartialMixins
 
         internal static string GetFullQualifiedName(ISymbol typeSymbol)
         {
+            if(typeSymbol is IArrayTypeSymbol)
+            {
+                var arraySymbol = typeSymbol as IArrayTypeSymbol;
+                return $"{GetFullQualifiedName(arraySymbol.ElementType)}[]";
+            }
             var ns = GetNsName(typeSymbol.ContainingNamespace);
             if (!String.IsNullOrWhiteSpace(ns))
                 return $"{ns}.{typeSymbol.MetadataName}";

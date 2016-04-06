@@ -36,7 +36,7 @@ namespace PartialMixins
                         return (TypeSyntax)VisitGenericName(x as GenericNameSyntax);
 
                     return x;
-                });
+                }).ToArray();
                 node = node.WithTypeArgumentList(SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(newArguments)));
 
                 return SyntaxFactory.QualifiedName(SyntaxFactory.ParseName($"global::{PartialMixin.GetNsName(info.ContainingNamespace)}"), node);
