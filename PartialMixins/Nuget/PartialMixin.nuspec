@@ -18,7 +18,7 @@
     <files>
       <file src="build\PartialMixin.props" target="build\PartialMixin.props" />
       <file src="build\PartialMixin.targets" target="build\PartialMixin.targets" />
-      <file src="lib\portable-net45+win+wpa81+MonoAndroid10+xamarinios10+MonoTouch10\Mixin.dll" target="lib\portable-net45+win+wpa81+MonoAndroid10+xamarinios10+MonoTouch10\Mixin.dll" />
+      <file src="lib\portable-net45+win+wpa81+MonoAndroid10+xamarinios10+MonoTouch10\Mixin.dll" target="lib\portable45-net45+win8+wp8+wpa81\Mixin.dll" />
       <file src="tools\Microsoft.Build.dll" target="tools\Microsoft.Build.dll" />
       <file src="tools\Microsoft.Build.Engine.dll" target="tools\Microsoft.Build.Engine.dll" />
       <file src="tools\Microsoft.Build.Tasks.Core.dll" target="tools\Microsoft.Build.Tasks.Core.dll" />
