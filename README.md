@@ -3,7 +3,7 @@
 [![GitHub license](https://img.shields.io/github/license/LokiMidgard/PartialMixins.svg?style=flat-squar)](https://tldrlegal.com/license/mit-license#summary)
 
 
-# PartialMixins ![Icon](https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png)
+# PartialMixins <img src="https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png" width="35px" height="35px" />
 Extends C# with Mixins. The Mixins are simulated using partial classes, instead of ilweaving like other
 librarys. The MixinAttribute copys all members of the targeted Mixin to a partial class implementation
 of the anotated type. This give you intellisense support on your classes.
