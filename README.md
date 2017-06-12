@@ -63,7 +63,7 @@ Your mixins can also implement interfaces.
 
     }
 ```
-##Restrictions
+## Restrictions
 + The classes that implement the mixins must be partial. 
 + Mixins may not have constructors.
 + Mixins may not have methods with the same method signiture then any other mixin that is
@@ -81,7 +81,7 @@ _Con_
 * changes will only applyed after build
 * problems with refactoring. (if not using interfaces) 
 
-##Roadmap
+## Roadmap
 - [ ] Better compiletime error reporting
 - [ ] Generated source file shuold automaticly added to the Project 
 - [ ] Automated NuGet build _(ci)_
@@ -91,7 +91,7 @@ _Con_
 - [x] Better using conflict resolve strategy
 - [x] Add ```GenerteadCodeAttribute``` to Methods and Propertys
 
-##Legal 
+## Legal 
 This Software is licensed under [MIT](https://tldrlegal.com/license/mit-license#summary).
 
 ### Used Assets
