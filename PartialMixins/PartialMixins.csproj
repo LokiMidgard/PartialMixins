@@ -120,7 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mixin\Mixin.csproj">
-      <Project>{8b48a374-4ff0-4c98-953b-9142426e4ac2}</Project>
+      <Project>{72451e23-6f6f-484d-87bd-2df074820585}</Project>
       <Name>Mixin</Name>
     </ProjectReference>
   </ItemGroup>
