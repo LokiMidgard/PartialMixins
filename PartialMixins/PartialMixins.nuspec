@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>PartialMixins</id>
+    <version>1.0.5</version>
+    <authors>Ani Balasubramamiam</authors>
+    <description>Custom build tool packaging with Nuget</description>
+  </metadata>
+  <files>
+    <!-- Compatible with .Net Standard 1.0 and up -->
+    <file src="_._" target="lib/netstandard1.0/" />
+    
+    <!-- Framework specific target that includes the real run target below -->
+    <file src="PartialMixins.targets" target="build/netstandard1.0/PartialMixins.targets" />
+    
+    <!-- The target that actually runs the custom tool -->
+    <file src="RunPartialMixins.targets" target="tools" />
+    <file src="$publishdir$\netcoreapp2.2\**\*" target="tools/netcoreapp2.2/" />
+  </files>
+</package>
