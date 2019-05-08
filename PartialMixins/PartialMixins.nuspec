@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
-    <id>PartialMixins</id>
+    <id>PartialMixin</id>
     <version>$version$</version>
     <authors>Ani Balasubramamiam, Patrick Kranz</authors>
     <license type="expression">MIT</license>
