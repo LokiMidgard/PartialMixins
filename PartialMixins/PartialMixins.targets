@@ -1,4 +1,0 @@
-﻿<!-- PartialMixins.targets -->
-<Project>
-  <Import Project="$(MSBuildThisFileDirectory)/../../tools/RunPartialMixins.targets" />
-</Project>

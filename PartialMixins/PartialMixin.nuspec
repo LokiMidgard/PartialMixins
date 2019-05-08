@@ -19,10 +19,10 @@
     <file src="..\Mixin\bin\Release\netstandard1.0\*.dll" target="lib/netstandard1.0/" />
     
     <!-- Framework specific target that includes the real run target below -->
-    <file src="PartialMixins.targets" target="build/netstandard1.0/PartialMixins.targets" />
+    <file src="PartialMixin.targets" target="build/netstandard1.0/PartialMixin.targets" />
     
     <!-- The target that actually runs the custom tool -->
-    <file src="RunPartialMixins.targets" target="tools" />
+    <file src="RunPartialMixin.targets" target="tools" />
     <file src="$publishdir$\netcoreapp2.2\**\*" target="tools/netcoreapp2.2/" />
   </files>
 </package>
