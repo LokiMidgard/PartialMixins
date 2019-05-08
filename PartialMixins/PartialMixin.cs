@@ -1,23 +1,20 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.Formatting;
-using Microsoft.CodeAnalysis.MSBuild;
+
+using Buildalyzer.Workspaces;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
+using Buildalyzer;
 
 namespace PartialMixins
 {
-    public class PartialMixin : Microsoft.Build.Utilities.Task
+    class PartialMixin
     {
-        public String GeneratedFilePath { get; set; }
-        public String ProjectPath { get; set; }
-
         static void Main(string[] args)
         {
             if (args.Length != 2)
@@ -35,41 +32,31 @@ namespace PartialMixins
         }
 
 
-        public override bool Execute()
-        {
-            var projectPath = ProjectPath;
-            if (String.IsNullOrWhiteSpace(projectPath))
-                projectPath = this.BuildEngine4.ProjectFileOfTaskNode;
-
-            System.IO.File.WriteAllText(GeneratedFilePath, "");
-            var codeToGenerate = GenerateSource(projectPath).Result;
-            System.IO.File.WriteAllText(GeneratedFilePath, codeToGenerate);
-            return true;
-        }
-
         private static async Task<String> GenerateSource(string projectPath)
         {
-            MSBuildWorkspace workspace = MSBuildWorkspace.Create();
-            Project project = await workspace.OpenProjectAsync(projectPath);
+            var manager = new AnalyzerManager();
+            var workspace = new AdhocWorkspace();
+            var analyzer = manager.GetProject(projectPath);
+            Project project = analyzer.AddToWorkspace(workspace);
 
             var compilation = await project.GetCompilationAsync();
 
-            var mixinAttribute = compilation.GetTypeByMetadataName($"{nameof(Mixin)}.{nameof(Mixin.MixinAttribute)}");
+            var mixinAttribute = compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
             if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
                 throw new Exception("Attribut loded from wrong Assembly");
             var namespaces = compilation.GlobalNamespace.GetNamespaceMembers();
             IEnumerable<ITypeSymbol> typesToExtend = GetTypes(namespaces)
-                .Where(x => x.IsReferenceType)
+                .Where(x => x.IsReferenceType | x.IsValueType)
                 .Where(x => x.GetAttributes().Any(checkedAttribute => checkedAttribute.AttributeClass == mixinAttribute));
             typesToExtend = new HashSet<ITypeSymbol>(typesToExtend);
             typesToExtend = typesToExtend.OrderTopological(elementThatDependsOnOther =>
-             {
-                 var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(y => y.AttributeClass == mixinAttribute);
-                 var implementationSymbol = toImplenmt
-                 .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
-                 .Where(x => typesToExtend.Contains(x)).ToArray();
-                 return implementationSymbol;
-             });
+            {
+                var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(y => y.AttributeClass == mixinAttribute);
+                var implementationSymbol = toImplenmt
+                .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
+                .Where(x => typesToExtend.Contains(x)).ToArray();
+                return implementationSymbol;
+            });
 
             var newClasses = new List<MemberDeclarationSyntax>();
 
@@ -88,17 +75,18 @@ namespace PartialMixins
 
                     implementationSymbol = updatetedImplementationSymbol; // Waited until we saved the TypeParameters.
 
-                    foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<ClassDeclarationSyntax>())
+                    foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<TypeDeclarationSyntax>())
                     {
                         var semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
                         var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping);
-                        var changedImplementaionSyntaxNode = (ClassDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
+                        var changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
 
                         var AttributeGenerator = new MethodAttributor();
-                        changedImplementaionSyntaxNode = (ClassDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
+                        changedImplementaionSyntaxNode = (TypeDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
 
-
-                        var newClass = SyntaxFactory.ClassDeclaration(originalType.Name)
+                        var newClass = (originalType.IsReferenceType ? 
+                            SyntaxFactory.ClassDeclaration(originalType.Name) : (TypeDeclarationSyntax)SyntaxFactory.StructDeclaration(originalType.Name))
+                            .WithBaseList(originalImplementaionSyntaxNode.BaseList)
                             .WithMembers(changedImplementaionSyntaxNode.Members);
                         if ((originalType as INamedTypeSymbol)?.TypeParameters.Any() ?? false)
                             newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType as INamedTypeSymbol));
@@ -161,7 +149,7 @@ namespace PartialMixins
 
         internal static string GetFullQualifiedName(ISymbol typeSymbol)
         {
-            if(typeSymbol is IArrayTypeSymbol)
+            if (typeSymbol is IArrayTypeSymbol)
             {
                 var arraySymbol = typeSymbol as IArrayTypeSymbol;
                 return $"{GetFullQualifiedName(arraySymbol.ElementType)}[]";
@@ -194,5 +182,3 @@ namespace PartialMixins
         }
     }
 }
-
-
