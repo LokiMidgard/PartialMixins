@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <!--<TargetFrameworks>net472</TargetFrameworks>-->
     <TargetFrameworks>netcoreapp2.1</TargetFrameworks>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <!-- Pack settings -->
   <PropertyGroup>

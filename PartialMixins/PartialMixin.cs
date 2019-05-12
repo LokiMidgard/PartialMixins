@@ -12,6 +12,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
+using System.IO;
+using Microsoft.CodeAnalysis.Text;
 
 namespace PartialMixins
 {
@@ -19,22 +22,70 @@ namespace PartialMixins
     {
         static void Main(string[] args)
         {
-            if (args.Length != 2)
+
+            var lines = File.ReadAllLines(args[0]);
+
+            var refernencePath = new List<String>();
+            var defineConstantsItems = new List<String>();
+            var output = new List<String>();
+            var projectDir = new List<String>();
+            var compile = new List<String>();
+
+            string currentParameter = null;
+
+            foreach (var item in lines)
             {
-                Console.WriteLine("Usage: PartialMixins.exe [ProjectFile] [OutputFile]");
-                return;
+                if (item.StartsWith("--"))
+                    currentParameter = item.Substring(2);
+                else if (!string.IsNullOrWhiteSpace(item))
+                {
+
+                    var currentList = currentParameter switch
+                    {
+                        nameof(refernencePath) => refernencePath,
+                        nameof(defineConstantsItems) => defineConstantsItems,
+                        nameof(output) => output,
+                        nameof(projectDir) => projectDir,
+                        nameof(compile) => compile,
+                        _ => null,
+                    };
+
+                    currentList?.Add(item.Trim());
+                }
             }
 
-            var projectPath = args[0];
-            var newFilePath = args[1];
-
+            var newFilePath = output.Single();
+            Environment.CurrentDirectory = projectDir.Single();
             System.IO.File.WriteAllText(newFilePath, "");
-            var codeToGenerate = GenerateSource(projectPath).Result;
+            var codeToGenerate = GenerateSource(refernencePath, defineConstantsItems, compile);
             System.IO.File.WriteAllText(newFilePath, codeToGenerate);
         }
 
+        private static CSharpCompilation CreateCompilation(IEnumerable<string> preprocessorSymbols, IEnumerable<string> referencePath, IEnumerable<string> sourceFiles, CancellationToken cancellationToken)
+        {
+            var compilation = CSharpCompilation.Create("codegen")
+                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+                .WithReferences(referencePath.Select(p => MetadataReference.CreateFromFile(p)));
+            var parseOptions = new CSharpParseOptions(preprocessorSymbols: preprocessorSymbols);
 
-        private static async Task<string> GenerateSource(string projectPath)
+            foreach (var sourceFile in sourceFiles)
+            {
+                using (var stream = File.OpenRead(sourceFile))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var text = SourceText.From(stream);
+                    compilation = compilation.AddSyntaxTrees(
+                        CSharpSyntaxTree.ParseText(
+                            text,
+                            parseOptions,
+                            sourceFile,
+                            cancellationToken));
+                }
+            }
+
+            return compilation;
+        }
+        private static string GenerateSource(List<string> refernencePath, List<string> defineConstantsItems, List<string> compile)
         {
 
             //MSBuildWorkspace workspace = MSBuildWorkspace.Create();
@@ -43,16 +94,16 @@ namespace PartialMixins
             var workspace = Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.Create();
             Project project = await workspace.OpenProjectAsync(projectPath);
 #else
-            var manager = new AnalyzerManager();
-            manager.SetGlobalProperty("MixinsGenerator", "true");
-            var workspace = new AdhocWorkspace();
-            var analyzer = manager.GetProject(projectPath);
-            var project = analyzer.AddToWorkspace(workspace);
+            //var manager = new AnalyzerManager();
+            //manager.SetGlobalProperty("MixinsGenerator", "true");
+            //var workspace = new AdhocWorkspace();
+            //var analyzer = manager.GetProject(projectPath);
+            //var project = analyzer.AddToWorkspace(workspace);
 #endif
 
             //Project project = await workspace.OpenProjectAsync(projectPath);
 
-            var compilation = await project.GetCompilationAsync();
+            var compilation = CreateCompilation(defineConstantsItems, refernencePath, compile, default);
 
             var mixinAttribute = compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
             if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
@@ -148,8 +199,9 @@ namespace PartialMixins
                 }
             }
 
-            var newClassesCode = Formatter.Format(SyntaxFactory.CompilationUnit()
-                .WithMembers(SyntaxFactory.List(newClasses)), workspace).ToFullString();
+            var newClassesCode = SyntaxFactory.CompilationUnit()
+                .WithMembers(SyntaxFactory.List(newClasses)).NormalizeWhitespace().ToFullString();
+
 
             return newClassesCode;
         }

@@ -11,7 +11,23 @@
   </PropertyGroup>
 
     <Target Name="PartialMixins" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild" Condition="'$(MixinsGenerator)'!='true'">
-        <Exec Command="$(PartialMixins) $(ProjectPath) $(IntermediateOutputPath)PartialMixins.g.cs" />
+      <PropertyGroup>
+        <_CodeGenMixinInputFile>$(IntermediateOutputPath)PartialMixins.g.input</_CodeGenMixinInputFile>
+        <_InputParameterFiles>
+--refernencePath
+@(ReferencePath, '%0d%0a')
+--defineConstantsItems
+@(DefineConstantsItems, '%0d%0a')
+--output
+$(IntermediateOutputPath)PartialMixins.g.cs
+--projectDir
+$(MSBuildProjectDirectory)
+--compile
+@(Compile, '%0d%0a')
+        </_InputParameterFiles>
+      </PropertyGroup>
+      <WriteLinesToFile File="$(_CodeGenMixinInputFile)" Lines="$(_InputParameterFiles)" Overwrite="true" />
+          <Exec Command="$(PartialMixins) $(_CodeGenMixinInputFile)" />
         <ItemGroup Condition="Exists('$(IntermediateOutputPath)\PartialMixins.g.cs')">
             <Compile Include="$(IntermediateOutputPath)\PartialMixins.g.cs" />
         </ItemGroup>
