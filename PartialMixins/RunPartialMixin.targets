@@ -4,13 +4,13 @@
     <IntermediateOutputPath Condition="$(IntermediateOutputPath) == '' Or $(IntermediateOutputPath) == '*Undefined*'">$(MSBuildProjectDirectory)obj\$(Configuration)\</IntermediateOutputPath>
         
     <!-- Command to invoke PartialMixins -->
-    <PartialMixins>dotnet "$(MSBuildThisFileDirectory)/netcoreapp2.2/PartialMixins.dll"</PartialMixins>
+    <PartialMixins>dotnet "$(MSBuildThisFileDirectory)/netcoreapp2.1/PartialMixins.dll"</PartialMixins>
     
     <!-- Other variables  -->
     <CustomVariable>"$(MSBuildProjectDir)"</CustomVariable>
   </PropertyGroup>
 
-    <Target Name="PartialMixins" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
+    <Target Name="PartialMixins" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild" Condition="'$(MixinsGenerator)'!='true'">
         <Exec Command="$(PartialMixins) $(ProjectPath) $(IntermediateOutputPath)PartialMixins.g.cs" />
         <ItemGroup Condition="Exists('$(IntermediateOutputPath)\PartialMixins.g.cs')">
             <Compile Include="$(IntermediateOutputPath)\PartialMixins.g.cs" />

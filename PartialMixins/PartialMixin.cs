@@ -3,13 +3,15 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
 
+#if !NETFRAMEWORK
 using Buildalyzer.Workspaces;
+using Buildalyzer;
+#endif
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Buildalyzer;
 
 namespace PartialMixins
 {
@@ -32,12 +34,23 @@ namespace PartialMixins
         }
 
 
-        private static async Task<String> GenerateSource(string projectPath)
+        private static async Task<string> GenerateSource(string projectPath)
         {
+
+            //MSBuildWorkspace workspace = MSBuildWorkspace.Create();
+
+#if NETFRAMEWORK
+            var workspace = Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.Create();
+            Project project = await workspace.OpenProjectAsync(projectPath);
+#else
             var manager = new AnalyzerManager();
+            manager.SetGlobalProperty("MixinsGenerator", "true");
             var workspace = new AdhocWorkspace();
             var analyzer = manager.GetProject(projectPath);
-            Project project = analyzer.AddToWorkspace(workspace);
+            var project = analyzer.AddToWorkspace(workspace);
+#endif
+
+            //Project project = await workspace.OpenProjectAsync(projectPath);
 
             var compilation = await project.GetCompilationAsync();
 
@@ -45,7 +58,7 @@ namespace PartialMixins
             if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
                 throw new Exception("Attribut loded from wrong Assembly");
             var namespaces = compilation.GlobalNamespace.GetNamespaceMembers();
-            IEnumerable<ITypeSymbol> typesToExtend = GetTypes(namespaces)
+            var typesToExtend = GetTypes(namespaces)
                 .Where(x => x.IsReferenceType | x.IsValueType)
                 .Where(x => x.GetAttributes().Any(checkedAttribute => checkedAttribute.AttributeClass == mixinAttribute));
             typesToExtend = new HashSet<ITypeSymbol>(typesToExtend);
@@ -84,7 +97,7 @@ namespace PartialMixins
                         var AttributeGenerator = new MethodAttributor();
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
 
-                        var newClass = (originalType.IsReferenceType ? 
+                        var newClass = (originalType.IsReferenceType ?
                             SyntaxFactory.ClassDeclaration(originalType.Name) : (TypeDeclarationSyntax)SyntaxFactory.StructDeclaration(originalType.Name))
                             .WithBaseList(originalImplementaionSyntaxNode.BaseList)
                             .WithMembers(changedImplementaionSyntaxNode.Members);
@@ -155,7 +168,7 @@ namespace PartialMixins
                 return $"{GetFullQualifiedName(arraySymbol.ElementType)}[]";
             }
             var ns = GetNsName(typeSymbol.ContainingNamespace);
-            if (!String.IsNullOrWhiteSpace(ns))
+            if (!string.IsNullOrWhiteSpace(ns))
                 return $"{ns}.{typeSymbol.MetadataName}";
             return typeSymbol.MetadataName;
         }

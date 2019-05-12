@@ -25,15 +25,15 @@ namespace PartialMixins
         {
             if (!(node.Parent is QualifiedNameSyntax))
             {
-                var info = semanticModel.GetSymbolInfo(node).Symbol as INamedTypeSymbol;
+                var info = this.semanticModel.GetSymbolInfo(node).Symbol as INamedTypeSymbol;
                 var newArguments = node.TypeArgumentList.Arguments.Select(x =>
                 {
                     if (x is IdentifierNameSyntax)
-                        return (TypeSyntax)VisitIdentifierName(x as IdentifierNameSyntax);
+                        return (TypeSyntax)this.VisitIdentifierName(x as IdentifierNameSyntax);
                     if (x is QualifiedNameSyntax)
-                        return (TypeSyntax)VisitQualifiedName(x as QualifiedNameSyntax);
+                        return (TypeSyntax)this.VisitQualifiedName(x as QualifiedNameSyntax);
                     if (x is GenericNameSyntax)
-                        return (TypeSyntax)VisitGenericName(x as GenericNameSyntax);
+                        return (TypeSyntax)this.VisitGenericName(x as GenericNameSyntax);
 
                     return x;
                 }).ToArray();
@@ -45,18 +45,13 @@ namespace PartialMixins
             return base.VisitGenericName(node);
         }
 
-        public async Task<string> bl()
-        {
-            return null;
-        }
-
         public override SyntaxNode VisitQualifiedName(QualifiedNameSyntax node)
         {
             var rightText = node.Right.ToFullString();
             var leftText = node.Left.ToFullString();
             if (!leftText.StartsWith("global::"))
             {
-                var info = semanticModel.GetSymbolInfo(node).Symbol;
+                var info = this.semanticModel.GetSymbolInfo(node).Symbol;
                 string fullQualifeidName;
                 if (info is IMethodSymbol && info.Name == ".ctor")
                     fullQualifeidName = $"global::{PartialMixin.GetNsName(info.ContainingNamespace)}.{(info as IMethodSymbol).ReceiverType.Name}";
@@ -71,15 +66,15 @@ namespace PartialMixins
 
         public override SyntaxNode VisitIdentifierName(IdentifierNameSyntax node)
         {
-            var info = semanticModel.GetSymbolInfo(node);
+            var info = this.semanticModel.GetSymbolInfo(node);
             if (info.Symbol is ITypeParameterSymbol)
             {
                 if (node.Parent is TypeParameterConstraintClauseSyntax)
                     return node;
                 var tSymbol = info.Symbol as ITypeParameterSymbol;
-                if (typeParameterMapping.ContainsKey(tSymbol))
+                if (this.typeParameterMapping.ContainsKey(tSymbol))
                 {
-                    var typeParameterSyntax = SyntaxFactory.ParseName($"global::{PartialMixin.GetFullQualifiedName(typeParameterMapping[tSymbol])}");
+                    var typeParameterSyntax = SyntaxFactory.ParseName($"global::{PartialMixin.GetFullQualifiedName(this.typeParameterMapping[tSymbol])}");
                     return typeParameterSyntax;
                 }
             }
