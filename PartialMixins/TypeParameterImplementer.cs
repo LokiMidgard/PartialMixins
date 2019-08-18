@@ -12,8 +12,8 @@ namespace PartialMixins
 
     class TypeParameterImplementer : CSharpSyntaxRewriter
     {
-        private SemanticModel semanticModel;
-        private Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping;
+        private readonly SemanticModel semanticModel;
+        private readonly Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping;
 
         public TypeParameterImplementer(SemanticModel semanticModel, Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping)
         {
@@ -47,7 +47,7 @@ namespace PartialMixins
 
         public override SyntaxNode VisitQualifiedName(QualifiedNameSyntax node)
         {
-            var rightText = node.Right.ToFullString();
+            //var rightText = node.Right.ToFullString();
             var leftText = node.Left.ToFullString();
             if (!leftText.StartsWith("global::"))
             {

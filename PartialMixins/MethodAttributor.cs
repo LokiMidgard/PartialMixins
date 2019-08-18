@@ -15,7 +15,7 @@ namespace PartialMixins
         private readonly AttributeListSyntax[] generatedAttribute;
         public MethodAttributor()
         {
-            generatedAttribute = new AttributeListSyntax[] { SyntaxFactory.AttributeList(
+            this.generatedAttribute = new AttributeListSyntax[] { SyntaxFactory.AttributeList(
                             SyntaxFactory.SeparatedList(new AttributeSyntax[] {
                             SyntaxFactory.Attribute(SyntaxFactory.ParseName( GENERATOR_ATTRIBUTE_NAME),
                                 SyntaxFactory.AttributeArgumentList(
@@ -30,14 +30,14 @@ namespace PartialMixins
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
         {
             if (!node.AttributeLists.Any(x => x.Attributes.Any(y => y.Name.ToFullString() == GENERATOR_ATTRIBUTE_NAME)))
-                return node.AddAttributeLists(generatedAttribute);
+                return node.AddAttributeLists(this.generatedAttribute);
             return node;
         }
 
         public override SyntaxNode VisitPropertyDeclaration(PropertyDeclarationSyntax node)
         {
             if (!node.AttributeLists.Any(x => x.Attributes.Any(y => y.Name.ToFullString() == GENERATOR_ATTRIBUTE_NAME)))
-                return node.AddAttributeLists(generatedAttribute);
+                return node.AddAttributeLists(this.generatedAttribute);
             return node;
         }
     }
