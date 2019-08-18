@@ -52,7 +52,7 @@ namespace PartialMixins
 
             //Project project = await workspace.OpenProjectAsync(projectPath);
 
-            var compilation = await project.GetCompilationAsync();
+            var compilation = (await project.GetCompilationAsync()) as CSharpCompilation;
 
             var mixinAttribute = compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
             if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
@@ -142,7 +142,11 @@ namespace PartialMixins
 
                         var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                             .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
-                        compilation = compilation.AddSyntaxTrees(SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration })).SyntaxTree);
+                        var compilationUnit = SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration }));
+
+                        var syntaxTree = compilationUnit.SyntaxTree;
+                        syntaxTree = syntaxTree.WithRootAndOptions(syntaxTree.GetRoot(), new CSharpParseOptions(languageVersion: compilation.LanguageVersion) { });
+                        compilation = compilation.AddSyntaxTrees(syntaxTree);
                         newClasses.Add(newNamespaceDeclaration);
                     }
                 }

@@ -31,7 +31,7 @@
     <None Remove="PartialMixins.*.nupkg" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp2.1'">
-    <PackageReference Include="Buildalyzer.Workspaces" Version="2.2.0"  />
+    <PackageReference Include="Buildalyzer.Workspaces" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net472'">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.0.0" />

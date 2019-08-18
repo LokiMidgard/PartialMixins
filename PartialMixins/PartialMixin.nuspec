@@ -12,7 +12,7 @@
     <iconUrl>https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png</iconUrl>
     
     <description>Alows to use mixins in C#. Those are implemented using partial classes, providing intellisense.</description>
-    <releaseNotes>Now with support for structs and runs on .Net Core (thanks to Ani Balasubramamiam)</releaseNotes>
+    <releaseNotes>Fixed bug when wrong langversion was used to generate code.</releaseNotes>
   </metadata>
   <files>
     <!-- Compatible with .Net Standard 1.0 and up -->
