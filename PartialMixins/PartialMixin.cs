@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace PartialMixins
 {
@@ -153,7 +154,7 @@ namespace Mixin
 
 
 
-                context.AddSource($"{originalType.Name}_mixins.cs", txt);
+                context.AddSource($"{originalType.Name}_mixins.cs", SourceText.From(txt.ToString(), System.Text.Encoding.UTF8));
             }
 
 
