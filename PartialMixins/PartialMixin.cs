@@ -1,81 +1,72 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Formatting;
-
-#if !NETFRAMEWORK
-using Buildalyzer.Workspaces;
-using Buildalyzer;
-#endif
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace PartialMixins
 {
-    class PartialMixin
+    [Generator]
+    public class PartialMixin : ISourceGenerator
     {
-        static void Main(string[] args)
+        private const string attributeText = @"
+namespace Mixin
+{
+    [System.AttributeUsage(System.AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+    public sealed class MixinAttribute : System.Attribute
+    {
+        public MixinAttribute(System.Type toImplement)
         {
-            if (args.Length != 2)
-            {
-                Console.WriteLine("Usage: PartialMixins.exe [ProjectFile] [OutputFile]");
-                return;
-            }
+        }
+    }
+}
+";
 
-            var projectPath = args[0];
-            var newFilePath = args[1];
 
-            System.IO.File.WriteAllText(newFilePath, "");
-            var codeToGenerate = GenerateSource(projectPath).Result;
-            System.IO.File.WriteAllText(newFilePath, codeToGenerate);
+        public void Initialize(GeneratorInitializationContext context)
+        {
+            // Register the attribute source
+            context.RegisterForPostInitialization((i) => i.AddSource("MixinAttribute", attributeText));
+
+            // Register a syntax receiver that will be created for each generation pass
+            context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
         }
 
-
-        private static async Task<string> GenerateSource(string projectPath)
+        public void Execute(GeneratorExecutionContext context)
         {
+            // retrieve the populated receiver 
+            if (!(context.SyntaxContextReceiver is SyntaxReceiver receiver))
+                return;
 
-            //MSBuildWorkspace workspace = MSBuildWorkspace.Create();
+            // get the added attribute, and INotifyPropertyChanged
+            var attributeSymbol = context.Compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
 
-#if NETFRAMEWORK
-            var workspace = Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.Create();
-            Project project = await workspace.OpenProjectAsync(projectPath);
-#else
-            var manager = new AnalyzerManager();
-            manager.SetGlobalProperty("MixinsGenerator", "true");
-            var workspace = new AdhocWorkspace();
-            var analyzer = manager.GetProject(projectPath);
-            var project = analyzer.AddToWorkspace(workspace);
-#endif
 
-            //Project project = await workspace.OpenProjectAsync(projectPath);
 
-            var compilation = (await project.GetCompilationAsync()) as CSharpCompilation;
+            // We do use the correct compareer...
+#pragma warning disable RS1024 // Compare symbols correctly
+            var typesToExtend = new HashSet<INamedTypeSymbol>(receiver.Types.Where(t => t.GetAttributes().Any(x => x.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default))), SymbolEqualityComparer.Default) as IEnumerable<INamedTypeSymbol>;
+#pragma warning restore RS1024 // Compare symbols correctly
 
-            var mixinAttribute = compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
-            if (mixinAttribute.ContainingAssembly.Identity.Name != "Mixin")
-                throw new Exception("Attribut loded from wrong Assembly");
-            var namespaces = compilation.GlobalNamespace.GetNamespaceMembers();
-            var typesToExtend = GetTypes(namespaces)
-                .Where(x => x.IsReferenceType | x.IsValueType)
-                .Where(x => x.GetAttributes().Any(checkedAttribute => checkedAttribute.AttributeClass == mixinAttribute));
-            typesToExtend = new HashSet<ITypeSymbol>(typesToExtend);
             typesToExtend = typesToExtend.OrderTopological(elementThatDependsOnOther =>
-            {
-                var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(y => y.AttributeClass == mixinAttribute);
-                var implementationSymbol = toImplenmt
-                .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
-                .Where(x => typesToExtend.Contains(x)).ToArray();
-                return implementationSymbol;
-            });
+              {
+                  var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(x => x.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
+                  var implementationSymbol = toImplenmt
+                  .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
+                  .Where(x => typesToExtend.Contains(x, SymbolEqualityComparer.Default)).ToArray();
+                  return implementationSymbol;
+              });
 
-            var newClasses = new List<MemberDeclarationSyntax>();
+
+
+
+            var compilation = (CSharpCompilation)context.Compilation;
 
             foreach (var originalType in typesToExtend)
             {
-                var toImplenmt = originalType.GetAttributes().Where(y => y.AttributeClass == mixinAttribute);
+                var toImplenmt = originalType.GetAttributes().Where(x => x.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
+                var typeExtensions = new List<TypeDeclarationSyntax>();
                 foreach (var currentMixinAttribute in toImplenmt)
                 {
                     var implementationSymbol = (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol);
@@ -101,8 +92,8 @@ namespace PartialMixins
                             SyntaxFactory.ClassDeclaration(originalType.Name) : (TypeDeclarationSyntax)SyntaxFactory.StructDeclaration(originalType.Name))
                             .WithBaseList(originalImplementaionSyntaxNode.BaseList)
                             .WithMembers(changedImplementaionSyntaxNode.Members);
-                        if ((originalType as INamedTypeSymbol)?.TypeParameters.Any() ?? false)
-                            newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType as INamedTypeSymbol));
+                        if (originalType?.TypeParameters.Any() ?? false)
+                            newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType));
 
 
                         switch (originalType.DeclaredAccessibility)
@@ -139,29 +130,49 @@ namespace PartialMixins
                         if (!newClass.Modifiers.Any(x => x.Text == "partial"))
                             newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("partial"));
 
+                        typeExtensions.Add(newClass);
+                        //if (compilation is CSharpCompilation csCompilation)
+                        //{
+                        //}
 
-                        var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
-                            .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new MemberDeclarationSyntax[] { newClass }));
-                        var compilationUnit = SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration }));
-
-                        var syntaxTree = compilationUnit.SyntaxTree;
-                        syntaxTree = syntaxTree.WithRootAndOptions(syntaxTree.GetRoot(), new CSharpParseOptions(languageVersion: compilation.LanguageVersion) { });
-                        compilation = compilation.AddSyntaxTrees(syntaxTree);
-                        newClasses.Add(newNamespaceDeclaration);
+                        //newClasses.Add(newNamespaceDeclaration);
                     }
                 }
+
+
+                var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
+                    .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(typeExtensions));
+                var compilationUnit = SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration }));
+
+                var syntaxTree = compilationUnit.SyntaxTree;
+                syntaxTree = syntaxTree.WithRootAndOptions(syntaxTree.GetRoot(), new CSharpParseOptions(languageVersion: compilation.LanguageVersion) { });
+
+
+                compilation = compilation.AddSyntaxTrees(syntaxTree);
+                var txt = syntaxTree.GetText();
+
+
+
+                context.AddSource($"{originalType.Name}_mixins.cs", txt);
             }
 
-            var newClassesCode = Formatter.Format(SyntaxFactory.CompilationUnit()
-                .WithMembers(SyntaxFactory.List(newClasses)), workspace).ToFullString();
 
-            return newClassesCode;
         }
 
         private static TypeParameterListSyntax GetTypeParameters(INamedTypeSymbol originalType)
         {
             var typeParametrs = originalType.TypeParameters.Select(x => SyntaxFactory.TypeParameter(x.Name));
             return SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(typeParametrs));
+        }
+
+
+        internal static string GetNsName(INamespaceSymbol ns)
+        {
+            if (ns == null)
+                return null;
+            if (ns.ContainingNamespace != null && !string.IsNullOrWhiteSpace(ns.ContainingNamespace.Name))
+                return $"{GetNsName(ns.ContainingNamespace)}.{ns.Name}";
+            return ns.Name;
         }
 
         internal static string GetFullQualifiedName(ISymbol typeSymbol)
@@ -177,25 +188,30 @@ namespace PartialMixins
             return typeSymbol.MetadataName;
         }
 
-        internal static string GetNsName(INamespaceSymbol ns)
-        {
-            if (ns == null)
-                return null;
-            if (ns.ContainingNamespace != null && !string.IsNullOrWhiteSpace(ns.ContainingNamespace.Name))
-                return $"{GetNsName(ns.ContainingNamespace)}.{ns.Name}";
-            return ns.Name;
-        }
 
-        internal static IEnumerable<ITypeSymbol> GetTypes(IEnumerable<INamespaceSymbol> namespaces)
+
+        /// <summary>
+        /// Created on demand before each generation pass
+        /// </summary>
+        class SyntaxReceiver : ISyntaxContextReceiver
         {
-            var childNamespaces = namespaces
-                            .SelectMany(x => x.GetMembers())
-                            .OfType<INamespaceSymbol>();
-            var types = namespaces.SelectMany(x => x.GetMembers())
-                            .OfType<ITypeSymbol>();
-            if (childNamespaces.Any())
-                types = types.Concat(GetTypes(childNamespaces));
-            return types;
+            public List<INamedTypeSymbol> Types { get; } = new();
+
+            /// <summary>
+            /// Called for every syntax node in the compilation, we can inspect the nodes and save any information useful for generation
+            /// </summary>
+            public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
+            {
+                // any field with at least one attribute is a candidate for property generation
+                if (context.Node is TypeDeclarationSyntax typeDeclaration
+                    && typeDeclaration.AttributeLists.Count > 0)
+                {
+                    // Get the symbol being declared by the field, and keep it if its annotated
+                    var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
+                    if (typeSymbol.GetAttributes().Any(ad => ad.AttributeClass.ToDisplayString() == "Mixin.MixinAttribute"))
+                        this.Types.Add(typeSymbol);
+                }
+            }
         }
     }
 }

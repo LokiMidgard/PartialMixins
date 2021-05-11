@@ -1,55 +1,35 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\default.targets" />
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <!--<TargetFrameworks>net472</TargetFrameworks>-->
-    <TargetFrameworks>netcoreapp2.1</TargetFrameworks>
-  </PropertyGroup>
-  <!-- Pack settings -->
-  <PropertyGroup>
-    <NoPackageAnalysis>true</NoPackageAnalysis>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <NuspecFile>PartialMixin.nuspec</NuspecFile>
-    <IntermediatePackDir>$(MSBuildProjectDirectory)/bin/$(Configuration)/publish/</IntermediatePackDir>
-    <PublishDir>$(IntermediatePackDir)$(TargetFramework)/</PublishDir>
-    <NuspecProperties>version=$(Version);publishDir=$([MSBuild]::NormalizeDirectory($(IntermediatePackDir)))</NuspecProperties>
-  </PropertyGroup>
+	<Import Project="..\default.targets" />
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>9.0</LangVersion>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<BuildOutputTargetFolder>analyzers</BuildOutputTargetFolder>
+	</PropertyGroup>
 
+	<PropertyGroup>
+		<PackageId>PartialMixin</PackageId>
+		<Authors>Ani Balasubramamiam, Patrick Kranz</Authors>
+		<PackageLicenseExpression >MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/LokiMidgard/PartialMixins</PackageProjectUrl>
+		<Copyright>Copyright 2016</Copyright>
+		<PackageTags>mixin</PackageTags>
+		<PackageIcon>combine.png</PackageIcon>
+		<RepositoryUrl >https://github.com/LokiMidgard/PartialMixins.git</RepositoryUrl>
+		<PackageIconUrl>https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png</PackageIconUrl>
 
-  <!--<ItemDefinitionGroup>
-    <PackageReference>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <ProjectReference>
-      <PrivateAssets>all</PrivateAssets>
-    </ProjectReference>
-  </ItemDefinitionGroup>-->
-  
-  <!-- Don't clutter up our solution view with generated packages -->
-  <ItemGroup>
-    <None Remove="PartialMixins.*.nupkg" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp2.1'">
-    <PackageReference Include="Buildalyzer.Workspaces" Version="2.3.0" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)'=='net472'">
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.0.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="3.0.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.0.0" />
-  </ItemGroup>
+		<Description>Alows to use mixins in C#. Those are implemented using partial classes, providing intellisense.</Description>
+		<PackageReleaseNotes>Updated to use Rosly source code generation.</PackageReleaseNotes>
+	</PropertyGroup>
 
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.9.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.2" PrivateAssets="all" />
+	</ItemGroup>
 
-  
-  <ItemGroup>
-    <ProjectReference Include="..\Mixin\Mixin.csproj" />
-  </ItemGroup>
-
-  <!-- Executes /t:Publish for all target frameworks before packing-->
-  <Target Name="Nuget" AfterTargets="Build">
-    <ItemGroup>
-      <_TargetFramework Include="$(TargetFrameworks)" />
-    </ItemGroup>
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Publish" Properties="TargetFramework=%(_TargetFramework.Identity)" />
-  </Target>
+	<ItemGroup>
+		<None Include="../combine.png" Pack="true" PackagePath="\"/>
+		<Folder Include="Properties\" />
+	</ItemGroup>
 </Project>
