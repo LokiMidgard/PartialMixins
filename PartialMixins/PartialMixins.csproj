@@ -1,22 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-	<Import Project="..\default.targets" />
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>9.0</LangVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<BuildOutputTargetFolder>analyzers</BuildOutputTargetFolder>
+		<Version>1.0.16</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
 		<PackageId>PartialMixin</PackageId>
 		<Authors>Ani Balasubramamiam, Patrick Kranz</Authors>
-		<PackageLicenseExpression >MIT</PackageLicenseExpression>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/LokiMidgard/PartialMixins</PackageProjectUrl>
 		<Copyright>Copyright 2016</Copyright>
 		<PackageTags>mixin</PackageTags>
 		<PackageIcon>combine.png</PackageIcon>
-		<RepositoryUrl >https://github.com/LokiMidgard/PartialMixins.git</RepositoryUrl>
+		<RepositoryUrl>https://github.com/LokiMidgard/PartialMixins.git</RepositoryUrl>
 		<PackageIconUrl>https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png</PackageIconUrl>
 
 		<Description>Alows to use mixins in C#. Those are implemented using partial classes, providing intellisense.</Description>
@@ -28,8 +28,10 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.2" PrivateAssets="all" />
 	</ItemGroup>
 
+
+
 	<ItemGroup>
-		<None Include="../combine.png" Pack="true" PackagePath="\"/>
+		<None Include="../combine.png" Pack="true" PackagePath="\" />
 		<Folder Include="Properties\" />
 	</ItemGroup>
 </Project>

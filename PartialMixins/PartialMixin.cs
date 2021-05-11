@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -28,7 +29,7 @@ namespace Mixin
         public void Initialize(GeneratorInitializationContext context)
         {
             // Register the attribute source
-            context.RegisterForPostInitialization((i) => i.AddSource("MixinAttribute", attributeText));
+            context.RegisterForPostInitialization((i) => i.AddSource("MixinAttribute.cs", attributeText));
 
             // Register a syntax receiver that will be created for each generation pass
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
@@ -42,7 +43,6 @@ namespace Mixin
 
             // get the added attribute, and INotifyPropertyChanged
             var attributeSymbol = context.Compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
-
 
 
             // We do use the correct compareer...
@@ -147,14 +147,28 @@ namespace Mixin
 
                 var syntaxTree = compilationUnit.SyntaxTree;
                 syntaxTree = syntaxTree.WithRootAndOptions(syntaxTree.GetRoot(), new CSharpParseOptions(languageVersion: compilation.LanguageVersion) { });
-
+                syntaxTree = syntaxTree.GetRoot().NormalizeWhitespace().SyntaxTree;
 
                 compilation = compilation.AddSyntaxTrees(syntaxTree);
-                var txt = syntaxTree.GetText();
+
+                var formated = syntaxTree.GetRoot();
+                var txt = formated.GetText(System.Text.Encoding.UTF8);
+
+                //string lines = string.Empty;
+                //var reader = new StringReader(txt.ToString());
+
+                //string line;
+                //do
+                //{
+                //    line = reader.ReadLine();
+                //    lines += "\n#error " + line ?? string.Empty;
+                //}
+                //while (line != null);
+
+                //txt = SourceText.From(lines, System.Text.Encoding.UTF8);
 
 
-
-                context.AddSource($"{originalType.Name}_mixins.cs", SourceText.From(txt.ToString(), System.Text.Encoding.UTF8));
+                context.AddSource($"{originalType.Name}_mixins.cs", txt);
             }
 
 
