@@ -63,29 +63,52 @@ Your mixins can also implement interfaces.
 
     }
 ```
+
+It is also possible to replace a Method parameter or returntype with the type that implement the Mixin.
+```c#
+    abstract class AddMixin
+    {
+        [return: Substitute]
+        public abstract AddMixin Add([Substitute] AddMixin other);
+        [return: Substitute]
+        public static AddMixin operator +([Substitute] AddMixin a1, [Substitute] AddMixin a2)
+        {
+            return a1.Add(a2);
+        }
+    }
+```
+
+A Type that uses this Mixin may look like this:
+```c#
+    [Mixin(typeof(AddMixin))]
+    public partial struct MyNumber
+    {
+        public int Value { get; }
+        public MyNumber(int value) => this.Value = value;
+        public partial MyNumber Add(MyNumber other) => new MyNumber(this.Value + other.Value);
+    }
+
+```
+
+As you can see absract methods are implemented as partial Methods. That way you can reqirer the consumer of
+your Mixin to provide specific functionallity.
+
+Constructer do not need the Attribute they will always replaced with the implementing Type.
+
+
 ## Restrictions
 + The classes that implement the mixins must be partial. 
-+ Mixins may not have constructors.
++ ~~Mixins may not have constructors.~~
 + Mixins may not have methods with the same method signiture then any other mixin that is
-implemented by the same class, or any method of the implementing class itself. _(unless explicitly
-implemented methods of interfaces)_  
+  implemented by the same class, or any method of the implementing class itself. _(unless explicitly
+  implemented methods of interfaces)_  
 * Mixins should not inhire from anything other than ```Object```
-
-## Pros & Cons
-
-_Pro_
-* intellisense support
-* better debugging
  
-_Con_
-* changes will only applyed after build
-* problems with refactoring. (if not using interfaces) 
 
 ## Roadmap
 - [ ] Better compiletime error reporting
-- [ ] Generated source file shuold automaticly added to the Project 
-- [ ] Automated NuGet build _(ci)_
-- [ ] Multithreading _(where posible)_
+- [x] Generated source file shuold automaticly added to the Project 
+- [x] Automated NuGet build _(ci)_
 - [x] Allow mixins of mixins. _(As long it is no circal dependency)_
 - [x] Support for Generic Mixins
 - [x] Better using conflict resolve strategy

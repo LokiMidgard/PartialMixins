@@ -15,16 +15,22 @@ namespace PartialMixins
         private const string attributeText = @"
 namespace Mixin
 {
-    [System.AttributeUsage(System.AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+    [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct, Inherited = false, AllowMultiple = true)]
     public sealed class MixinAttribute : System.Attribute
     {
         public MixinAttribute(System.Type toImplement)
         {
         }
     }
+    [System.AttributeUsage(System.AttributeTargets.Parameter | System.AttributeTargets.ReturnValue | System.AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+    public sealed class SubstituteAttribute : System.Attribute
+    {
+        public SubstituteAttribute()
+        {
+        }
+    }
 }
 ";
-
 
         public void Initialize(GeneratorInitializationContext context)
         {
@@ -37,27 +43,55 @@ namespace Mixin
 
         public void Execute(GeneratorExecutionContext context)
         {
+            try
+            {
+                ExecuteInternal(context);
+
+            }
+            catch (Exception e)
+            {
+
+                string lines = string.Empty;
+                var reader = new StringReader(e.ToString());
+
+                string line;
+                do
+                {
+                    line = reader.ReadLine();
+                    lines += "\n#error " + line ?? string.Empty;
+                }
+                while (line != null);
+
+                var txt = SourceText.From(lines, System.Text.Encoding.UTF8);
+
+                context.AddSource($"Error_mixins.cs", txt);
+            }
+        }
+
+        private static void ExecuteInternal(GeneratorExecutionContext context)
+        {
             // retrieve the populated receiver 
             if (!(context.SyntaxContextReceiver is SyntaxReceiver receiver))
                 return;
 
             // get the added attribute, and INotifyPropertyChanged
-            var attributeSymbol = context.Compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
+            var mixinAttribute = context.Compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
+            var parameterAttribute = context.Compilation.GetTypeByMetadataName("Mixin.SubstituteAttribute");
 
 
             // We do use the correct compareer...
 #pragma warning disable RS1024 // Compare symbols correctly
-            var typesToExtend = new HashSet<INamedTypeSymbol>(receiver.Types.Where(t => t.GetAttributes().Any(x => x.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default))), SymbolEqualityComparer.Default) as IEnumerable<INamedTypeSymbol>;
+            var typesToExtend = new HashSet<INamedTypeSymbol>(receiver.Types.Where(t => t.GetAttributes().Any(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default))), SymbolEqualityComparer.Default) as IEnumerable<INamedTypeSymbol>;
 #pragma warning restore RS1024 // Compare symbols correctly
 
             typesToExtend = typesToExtend.OrderTopological(elementThatDependsOnOther =>
-              {
-                  var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(x => x.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
-                  var implementationSymbol = toImplenmt
-                  .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
-                  .Where(x => typesToExtend.Contains(x, SymbolEqualityComparer.Default)).ToArray();
-                  return implementationSymbol;
-              });
+            {
+                var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default));
+                var implementationSymbol = toImplenmt
+                .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
+                .Where(x => typesToExtend.Contains(x, SymbolEqualityComparer.Default)).ToArray();
+                return implementationSymbol;
+            });
 
 
 
@@ -66,7 +100,7 @@ namespace Mixin
 
             foreach (var originalType in typesToExtend)
             {
-                var toImplenmt = originalType.GetAttributes().Where(x => x.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
+                var toImplenmt = originalType.GetAttributes().Where(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default));
                 var typeExtensions = new List<TypeDeclarationSyntax>();
                 foreach (var currentMixinAttribute in toImplenmt)
                 {
@@ -83,10 +117,21 @@ namespace Mixin
                     foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<TypeDeclarationSyntax>())
                     {
                         var semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
-                        var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping);
-                        var changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
 
-                        var AttributeGenerator = new MethodAttributor();
+                        var changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
+
+                        var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping);
+                        changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
+
+                        var parameterVisitor = new ParameterVisitor(semanticModel, parameterAttribute, originalType);
+                        changedImplementaionSyntaxNode = (TypeDeclarationSyntax)parameterVisitor.Visit(changedImplementaionSyntaxNode);
+                        //var changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
+
+                        // update the semantic model with the changed attributs
+
+
+
+                        var AttributeGenerator = new MethodAttributor(changedImplementaionSyntaxNode);
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
 
                         var newClass = (originalType.IsReferenceType ?
@@ -170,8 +215,6 @@ namespace Mixin
 
                 context.AddSource($"{originalType.Name}_mixins.cs", txt);
             }
-
-
         }
 
         private static TypeParameterListSyntax GetTypeParameters(INamedTypeSymbol originalType)
