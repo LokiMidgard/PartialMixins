@@ -6,15 +6,12 @@
 # PartialMixins <img src="https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png" width="35px" height="35px" />
 Extends C# with Mixins. The Mixins are simulated using partial classes, instead of ilweaving like other
 librarys. The MixinAttribute copys all members of the targeted Mixin to a partial class implementation
-of the anotated type. This give you intellisense support on your classes.
+of the anotated type. This give you intellisense support on your classes. It uses the roslyn code generation framework.
 
 ## Usage
 
 First add the NuGet [package](https://www.nuget.org/packages/PartialMixin/) to your Project.
 
-**Currently there is a Bug preventing the generated source file to be added to the project.**
-
-_Workaround: Manually add the ```Mixin.g.cs``` in the Properties folder to to your Project. This file will be created after the first build_
 
 To create a Mixin just declare a class.
 
