@@ -12,9 +12,9 @@ namespace PartialMixins
     {
         private const string GENERATOR_ATTRIBUTE_NAME = "global::System.CodeDom.Compiler.GeneratedCodeAttribute";
         private readonly AttributeListSyntax[] generatedAttribute;
-        private readonly TypeDeclarationSyntax currentDeclaration;
+        private readonly CSharpSyntaxNode currentDeclaration;
 
-        public MethodAttributor(TypeDeclarationSyntax currentDeclaration)
+        public MethodAttributor(CSharpSyntaxNode currentDeclaration)
         {
             this.generatedAttribute = new AttributeListSyntax[] { SyntaxFactory.AttributeList(
                             SyntaxFactory.SeparatedList(new AttributeSyntax[] {

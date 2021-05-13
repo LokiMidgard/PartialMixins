@@ -64,14 +64,12 @@ Your mixins can also implement interfaces.
     }
 ```
 
-It is also possible to replace a Method parameter or returntype with the type that implement the Mixin.
+If you use the Mixin Type itself, it will be substitueded with the consuming type.
 ```c#
     abstract class AddMixin
     {
-        [return: Substitute]
-        public abstract AddMixin Add([Substitute] AddMixin other);
-        [return: Substitute]
-        public static AddMixin operator +([Substitute] AddMixin a1, [Substitute] AddMixin a2)
+        public abstract AddMixin Add(AddMixin other);
+        public static AddMixin operator +(AddMixin a1, AddMixin a2)
         {
             return a1.Add(a2);
         }
@@ -80,6 +78,8 @@ It is also possible to replace a Method parameter or returntype with the type th
 
 A Type that uses this Mixin may look like this:
 ```c#
+namespace Sample
+{
     [Mixin(typeof(AddMixin))]
     public partial struct MyNumber
     {
@@ -87,13 +87,29 @@ A Type that uses this Mixin may look like this:
         public MyNumber(int value) => this.Value = value;
         public partial MyNumber Add(MyNumber other) => new MyNumber(this.Value + other.Value);
     }
+}
+
+// Generated Code...
+
+namespace Sample
+{
+    public partial struct MyNumber
+    {
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Mixin Task", "1.0.51.0")]
+        public partial Sample.MyNumber Add(Sample.MyNumber other);
+        [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Mixin Task", "1.0.51.0")]
+        public static Sample.MyNumber operator +(Sample.MyNumber a1, Sample.MyNumber a2)
+        {
+            return a1.Add(a2);
+        }
+    }
+}
 
 ```
 
 As you can see absract methods are implemented as partial Methods. That way you can reqirer the consumer of
 your Mixin to provide specific functionallity.
 
-Constructer do not need the Attribute they will always replaced with the implementing Type.
 
 
 ## Restrictions

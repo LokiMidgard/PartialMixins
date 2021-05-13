@@ -22,15 +22,10 @@ namespace Mixin
         {
         }
     }
-    [System.AttributeUsage(System.AttributeTargets.Parameter | System.AttributeTargets.ReturnValue | System.AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-    public sealed class SubstituteAttribute : System.Attribute
-    {
-        public SubstituteAttribute()
-        {
-        }
-    }
 }
 ";
+
+
 
         public void Initialize(GeneratorInitializationContext context)
         {
@@ -119,24 +114,17 @@ namespace Mixin
                         var semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
 
                         var changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
+                        
+                        var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping, originalType, implementationSymbol);
+                        changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(changedImplementaionSyntaxNode);
 
-                        var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping);
-                        changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(originalImplementaionSyntaxNode);
-
-                        var parameterVisitor = new ParameterVisitor(semanticModel, parameterAttribute, originalType);
-                        changedImplementaionSyntaxNode = (TypeDeclarationSyntax)parameterVisitor.Visit(changedImplementaionSyntaxNode);
-                        //var changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
-
-                        // update the semantic model with the changed attributs
-
-
-
+                     
                         var AttributeGenerator = new MethodAttributor(changedImplementaionSyntaxNode);
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
 
                         var newClass = (originalType.IsReferenceType ?
                             SyntaxFactory.ClassDeclaration(originalType.Name) : (TypeDeclarationSyntax)SyntaxFactory.StructDeclaration(originalType.Name))
-                            .WithBaseList(originalImplementaionSyntaxNode.BaseList)
+                            .WithBaseList(changedImplementaionSyntaxNode.BaseList)
                             .WithMembers(changedImplementaionSyntaxNode.Members);
                         if (originalType?.TypeParameters.Any() ?? false)
                             newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType));
