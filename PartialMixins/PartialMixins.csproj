@@ -5,7 +5,7 @@
 		<LangVersion>9.0</LangVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<BuildOutputTargetFolder>analyzers</BuildOutputTargetFolder>
-		<Version>1.0.52</Version>
+		<Version>1.0.53</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -20,7 +20,7 @@
 		<PackageIconUrl>https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png</PackageIconUrl>
 
 		<Description>Alows to use mixins in C#. Those are implemented using partial classes, providing intellisense.</Description>
-		<PackageReleaseNotes>Higher flexibility (including constructors, abstract methods, constructors and operators).</PackageReleaseNotes>
+		<PackageReleaseNotes>Fix #10 Nested generics where not correctly used.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

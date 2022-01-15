@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -114,11 +115,11 @@ namespace Mixin
                         var semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
 
                         var changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
-                        
+
                         var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping, originalType, implementationSymbol);
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(changedImplementaionSyntaxNode);
 
-                     
+
                         var AttributeGenerator = new MethodAttributor(changedImplementaionSyntaxNode);
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
 
@@ -221,7 +222,7 @@ namespace Mixin
             return ns.Name;
         }
 
-        internal static string GetFullQualifiedName(ISymbol typeSymbol)
+        internal static string GetFullQualifiedName(ISymbol typeSymbol, bool getMetadata = false)
         {
             if (typeSymbol is IArrayTypeSymbol)
             {
@@ -230,8 +231,15 @@ namespace Mixin
             }
             var ns = GetNsName(typeSymbol.ContainingNamespace);
             if (!string.IsNullOrWhiteSpace(ns))
-                return $"{ns}.{typeSymbol.MetadataName}";
+                return $"{ns}.{GetName(typeSymbol, getMetadata)}";
             return typeSymbol.MetadataName;
+        }
+
+        private static string GetName(ISymbol typeSymbol, bool getmetadata)
+        {
+            if (getmetadata)
+                return typeSymbol.MetadataName;
+            return typeSymbol.ToString();
         }
 
 
@@ -260,4 +268,6 @@ namespace Mixin
             }
         }
     }
+
 }
+
