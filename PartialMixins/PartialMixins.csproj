@@ -5,7 +5,7 @@
 		<LangVersion>9.0</LangVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<BuildOutputTargetFolder>analyzers</BuildOutputTargetFolder>
-		<Version>1.0.53</Version>
+		<Version>1.0.54</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -19,8 +19,10 @@
 		<RepositoryUrl>https://github.com/LokiMidgard/PartialMixins.git</RepositoryUrl>
 		<PackageIconUrl>https://raw.githubusercontent.com/LokiMidgard/PartialMixins/master/combine.png</PackageIconUrl>
 
+		<PackageReadmeFile>readme.md</PackageReadmeFile>
+
 		<Description>Alows to use mixins in C#. Those are implemented using partial classes, providing intellisense.</Description>
-		<PackageReleaseNotes>Fix #10 Nested generics where not correctly used.</PackageReleaseNotes>
+		<PackageReleaseNotes>Updates package to include the readme.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -32,6 +34,7 @@
 
 	<ItemGroup>
 		<None Include="../combine.png" Pack="true" PackagePath="\" />
+		<None Include="../readme.md" Pack="true" PackagePath="\"/>
 		<Folder Include="Properties\" />
 	</ItemGroup>
 </Project>
