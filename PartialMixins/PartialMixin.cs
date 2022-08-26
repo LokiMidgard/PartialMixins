@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace PartialMixins
 {
@@ -48,7 +48,7 @@ namespace Mixin
             {
 
                 string lines = string.Empty;
-                var reader = new StringReader(e.ToString());
+                StringReader reader = new StringReader(e.ToString());
 
                 string line;
                 do
@@ -58,7 +58,7 @@ namespace Mixin
                 }
                 while (line != null);
 
-                var txt = SourceText.From(lines, System.Text.Encoding.UTF8);
+                SourceText txt = SourceText.From(lines, System.Text.Encoding.UTF8);
 
                 context.AddSource($"Error_mixins.cs", txt);
             }
@@ -68,22 +68,24 @@ namespace Mixin
         {
             // retrieve the populated receiver 
             if (!(context.SyntaxContextReceiver is SyntaxReceiver receiver))
+            {
                 return;
+            }
 
             // get the added attribute, and INotifyPropertyChanged
-            var mixinAttribute = context.Compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
-            var parameterAttribute = context.Compilation.GetTypeByMetadataName("Mixin.SubstituteAttribute");
+            INamedTypeSymbol mixinAttribute = context.Compilation.GetTypeByMetadataName("Mixin.MixinAttribute");
+            INamedTypeSymbol parameterAttribute = context.Compilation.GetTypeByMetadataName("Mixin.SubstituteAttribute");
 
 
             // We do use the correct compareer...
 #pragma warning disable RS1024 // Compare symbols correctly
-            var typesToExtend = new HashSet<INamedTypeSymbol>(receiver.Types.Where(t => t.GetAttributes().Any(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default))), SymbolEqualityComparer.Default) as IEnumerable<INamedTypeSymbol>;
+            IEnumerable<INamedTypeSymbol> typesToExtend = new HashSet<INamedTypeSymbol>(receiver.Types.Where(t => t.GetAttributes().Any(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default))), SymbolEqualityComparer.Default);
 #pragma warning restore RS1024 // Compare symbols correctly
 
             typesToExtend = typesToExtend.OrderTopological(elementThatDependsOnOther =>
             {
-                var toImplenmt = elementThatDependsOnOther.GetAttributes().Where(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default));
-                var implementationSymbol = toImplenmt
+                IEnumerable<AttributeData> toImplenmt = elementThatDependsOnOther.GetAttributes().Where(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default));
+                INamedTypeSymbol[] implementationSymbol = toImplenmt
                 .Select(currentMixinAttribute => (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol).ConstructedFrom)
                 .Where(x => typesToExtend.Contains(x, SymbolEqualityComparer.Default)).ToArray();
                 return implementationSymbol;
@@ -92,44 +94,46 @@ namespace Mixin
 
 
 
-            var compilation = (CSharpCompilation)context.Compilation;
+            CSharpCompilation compilation = (CSharpCompilation)context.Compilation;
 
-            foreach (var originalType in typesToExtend)
+            foreach (INamedTypeSymbol originalType in typesToExtend)
             {
-                var toImplenmt = originalType.GetAttributes().Where(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default));
-                var typeExtensions = new List<TypeDeclarationSyntax>();
-                foreach (var currentMixinAttribute in toImplenmt)
+                IEnumerable<AttributeData> toImplenmt = originalType.GetAttributes().Where(x => x.AttributeClass.Equals(mixinAttribute, SymbolEqualityComparer.Default));
+                List<TypeDeclarationSyntax> typeExtensions = new List<TypeDeclarationSyntax>();
+                foreach (AttributeData currentMixinAttribute in toImplenmt)
                 {
-                    var implementationSymbol = (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol);
-                    var updatetedImplementationSymbol = compilation.GetTypeByMetadataName(GetFullQualifiedName(implementationSymbol));
+                    INamedTypeSymbol implementationSymbol = (currentMixinAttribute.ConstructorArguments.First().Value as INamedTypeSymbol);
+                    INamedTypeSymbol updatetedImplementationSymbol = compilation.GetTypeByMetadataName(GetFullQualifiedName(implementationSymbol));
                     // Get Generic Typeparameter
+                    System.Diagnostics.Debug.Assert(updatetedImplementationSymbol != null, $"updatetedImplementationSymbol is null {implementationSymbol} / {GetFullQualifiedName(implementationSymbol)}");
 
-                    var typeParameterMapping = implementationSymbol.TypeParameters
+                    Dictionary<ITypeParameterSymbol, ITypeSymbol> typeParameterMapping = implementationSymbol.TypeParameters
                                             .Zip(implementationSymbol.TypeArguments, (parameter, argumet) => new { parameter, argumet })
                                         .ToDictionary(x => x.parameter, x => x.argumet, new TypeParameterComparer());
 
                     implementationSymbol = updatetedImplementationSymbol; // Waited until we saved the TypeParameters.
 
-                    foreach (var originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<TypeDeclarationSyntax>())
+                    foreach (TypeDeclarationSyntax originalImplementaionSyntaxNode in implementationSymbol.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).Cast<TypeDeclarationSyntax>())
                     {
-                        var semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
+                        SemanticModel semanticModel = compilation.GetSemanticModel(originalImplementaionSyntaxNode.SyntaxTree);
 
-                        var changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
+                        TypeDeclarationSyntax changedImplementaionSyntaxNode = originalImplementaionSyntaxNode;
 
-                        var typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping, originalType, implementationSymbol);
+                        TypeParameterImplementer typeParameterImplementer = new TypeParameterImplementer(semanticModel, typeParameterMapping, originalType, implementationSymbol);
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)typeParameterImplementer.Visit(changedImplementaionSyntaxNode);
 
 
-                        var AttributeGenerator = new MethodAttributor(changedImplementaionSyntaxNode);
+                        MethodAttributor AttributeGenerator = new MethodAttributor(changedImplementaionSyntaxNode);
                         changedImplementaionSyntaxNode = (TypeDeclarationSyntax)AttributeGenerator.Visit(changedImplementaionSyntaxNode);
 
-                        var newClass = (originalType.IsReferenceType ?
+                        TypeDeclarationSyntax newClass = (originalType.IsReferenceType ?
                             SyntaxFactory.ClassDeclaration(originalType.Name) : (TypeDeclarationSyntax)SyntaxFactory.StructDeclaration(originalType.Name))
                             .WithBaseList(changedImplementaionSyntaxNode.BaseList)
                             .WithMembers(changedImplementaionSyntaxNode.Members);
                         if (originalType?.TypeParameters.Any() ?? false)
+                        {
                             newClass = newClass.WithTypeParameterList(GetTypeParameters(originalType));
-
+                        }
 
                         switch (originalType.DeclaredAccessibility)
                         {
@@ -160,10 +164,14 @@ namespace Mixin
                         }
 
                         if (originalType.IsStatic)
+                        {
                             newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("static"));
+                        }
 
                         if (!newClass.Modifiers.Any(x => x.Text == "partial"))
+                        {
                             newClass = newClass.AddModifiers(SyntaxFactory.ParseToken("partial"));
+                        }
 
                         typeExtensions.Add(newClass);
                         //if (compilation is CSharpCompilation csCompilation)
@@ -175,18 +183,18 @@ namespace Mixin
                 }
 
 
-                var newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
+                NamespaceDeclarationSyntax newNamespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GetNsName(originalType.ContainingNamespace)))
                     .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(typeExtensions));
-                var compilationUnit = SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration }));
+                CompilationUnitSyntax compilationUnit = SyntaxFactory.CompilationUnit().WithMembers(SyntaxFactory.List(new MemberDeclarationSyntax[] { newNamespaceDeclaration }));
 
-                var syntaxTree = compilationUnit.SyntaxTree;
+                SyntaxTree syntaxTree = compilationUnit.SyntaxTree;
                 syntaxTree = syntaxTree.WithRootAndOptions(syntaxTree.GetRoot(), new CSharpParseOptions(languageVersion: compilation.LanguageVersion) { });
                 syntaxTree = syntaxTree.GetRoot().NormalizeWhitespace().SyntaxTree;
 
                 compilation = compilation.AddSyntaxTrees(syntaxTree);
 
-                var formated = syntaxTree.GetRoot();
-                var txt = formated.GetText(System.Text.Encoding.UTF8);
+                SyntaxNode formated = syntaxTree.GetRoot();
+                SourceText txt = formated.GetText(System.Text.Encoding.UTF8);
 
                 //string lines = string.Empty;
                 //var reader = new StringReader(txt.ToString());
@@ -208,7 +216,7 @@ namespace Mixin
 
         private static TypeParameterListSyntax GetTypeParameters(INamedTypeSymbol originalType)
         {
-            var typeParametrs = originalType.TypeParameters.Select(x => SyntaxFactory.TypeParameter(x.Name));
+            IEnumerable<TypeParameterSyntax> typeParametrs = originalType.TypeParameters.Select(x => SyntaxFactory.TypeParameter(x.Name));
             return SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(typeParametrs));
         }
 
@@ -216,9 +224,15 @@ namespace Mixin
         internal static string GetNsName(INamespaceSymbol ns)
         {
             if (ns == null)
+            {
                 return null;
+            }
+
             if (ns.ContainingNamespace != null && !string.IsNullOrWhiteSpace(ns.ContainingNamespace.Name))
+            {
                 return $"{GetNsName(ns.ContainingNamespace)}.{ns.Name}";
+            }
+
             return ns.Name;
         }
 
@@ -226,19 +240,35 @@ namespace Mixin
         {
             if (typeSymbol is IArrayTypeSymbol)
             {
-                var arraySymbol = typeSymbol as IArrayTypeSymbol;
+                IArrayTypeSymbol arraySymbol = typeSymbol as IArrayTypeSymbol;
                 return $"{GetFullQualifiedName(arraySymbol.ElementType)}[]";
             }
-            var ns = GetNsName(typeSymbol.ContainingNamespace);
+            string ns = GetNsName(typeSymbol.ContainingNamespace);
             if (!string.IsNullOrWhiteSpace(ns))
-                return $"{ns}.{GetName(typeSymbol, getMetadata)}";
+            {
+
+                string name = GetName(typeSymbol, getMetadata);
+                if (name.StartsWith(ns))
+                {
+                    return name;
+                }
+                else
+                {
+                    return $"{ns}.{name}";
+
+                }
+            }
+
             return typeSymbol.MetadataName;
         }
 
         private static string GetName(ISymbol typeSymbol, bool getmetadata)
         {
             if (getmetadata)
+            {
                 return typeSymbol.MetadataName;
+            }
+
             return typeSymbol.ToString();
         }
 
@@ -247,7 +277,7 @@ namespace Mixin
         /// <summary>
         /// Created on demand before each generation pass
         /// </summary>
-        class SyntaxReceiver : ISyntaxContextReceiver
+        private class SyntaxReceiver : ISyntaxContextReceiver
         {
             public List<INamedTypeSymbol> Types { get; } = new();
 
@@ -261,9 +291,11 @@ namespace Mixin
                     && typeDeclaration.AttributeLists.Count > 0)
                 {
                     // Get the symbol being declared by the field, and keep it if its annotated
-                    var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
+                    INamedTypeSymbol typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
                     if (typeSymbol.GetAttributes().Any(ad => ad.AttributeClass.ToDisplayString() == "Mixin.MixinAttribute"))
-                        this.Types.Add(typeSymbol);
+                    {
+                        Types.Add(typeSymbol);
+                    }
                 }
             }
         }
